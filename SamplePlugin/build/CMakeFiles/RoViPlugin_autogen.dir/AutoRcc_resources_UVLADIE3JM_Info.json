@@ -1,0 +1,19 @@
+{
+	"BUILD_DIR" : "/home/rovi2022/Workspace/project/SamplePlugin/build/RoViPlugin_autogen",
+	"CMAKE_BINARY_DIR" : "/home/rovi2022/Workspace/project/SamplePlugin/build",
+	"CMAKE_CURRENT_BINARY_DIR" : "/home/rovi2022/Workspace/project/SamplePlugin/build",
+	"CMAKE_CURRENT_SOURCE_DIR" : "/home/rovi2022/Workspace/project/SamplePlugin",
+	"CMAKE_SOURCE_DIR" : "/home/rovi2022/Workspace/project/SamplePlugin",
+	"INCLUDE_DIR" : "/home/rovi2022/Workspace/project/SamplePlugin/build/RoViPlugin_autogen/include",
+	"INPUTS" : [ "/home/rovi2022/Workspace/project/SamplePlugin/src/pa_icon.png" ],
+	"LOCK_FILE" : "/home/rovi2022/Workspace/project/SamplePlugin/build/CMakeFiles/RoViPlugin_autogen.dir/AutoRcc_resources_UVLADIE3JM_Lock.lock",
+	"MULTI_CONFIG" : false,
+	"OPTIONS" : [ "-name", "resources" ],
+	"OUTPUT_CHECKSUM" : "UVLADIE3JM",
+	"OUTPUT_NAME" : "qrc_resources.cpp",
+	"RCC_EXECUTABLE" : "/usr/lib/qt6/libexec/rcc",
+	"RCC_LIST_OPTIONS" : [ "--list" ],
+	"SETTINGS_FILE" : "/home/rovi2022/Workspace/project/SamplePlugin/build/CMakeFiles/RoViPlugin_autogen.dir/AutoRcc_resources_UVLADIE3JM_Used.txt",
+	"SOURCE" : "/home/rovi2022/Workspace/project/SamplePlugin/src/resources.qrc",
+	"VERBOSITY" : 0
+}

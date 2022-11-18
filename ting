@@ -1,0 +1,18 @@
+Vi køre sample plugin gennem robworks via plugin-halløj i toppen.
+der skal lige tilføjes lokalisationen til workcell.
+
+ændre i plugin -> cmake -> åbn 
+
+robwork kan "auto-loade" plugins, kan ses i readme filen.
+ctrl-h -> se hidden files. et eller andet RobworkStudio.ini, touch i terminal for at ændre, er den der ikke skal den tilføjes.
+køres når robworkstudio startes.
+her kan plugins tilføjes.
+(pwd giver stien til current folder)
+
+det er dette plugin vi skriver i.
+det er sådan vi samler robworks med alt det vi selv laver.
+---------------------------------------------------------------------------------
+
+Vi skal finde ud af at styre gripperen fra plugin.
+Vi skal få tilføjet at samle flasken op, køre til goal, slippe flasken igen.
+

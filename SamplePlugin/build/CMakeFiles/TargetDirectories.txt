@@ -1,0 +1,4 @@
+/home/rovi2022/Workspace/project/SamplePlugin/build/CMakeFiles/RoViPlugin.dir
+/home/rovi2022/Workspace/project/SamplePlugin/build/CMakeFiles/edit_cache.dir
+/home/rovi2022/Workspace/project/SamplePlugin/build/CMakeFiles/rebuild_cache.dir
+/home/rovi2022/Workspace/project/SamplePlugin/build/CMakeFiles/RoViPlugin_autogen.dir
