@@ -1,0 +1,18 @@
+installer pcl:
+	sudo apt install libpcl-dev
+ændre properties.json
+	"/usr/include/**"
+	
+konvertér 3ds til obj:
+	https://anyconv.com/3ds-to-obj-converter/
+	Den laver af en eller anden grund // efter alle f-værdier. brug ctrl-f -> expand search field -> replace all med ingenting
+	
+cmake og make PointCloudGen projektet
+min cmake burde virke.
+
+./pcd_gen Bottle.obj Bottle.pcd
+
+LAD VÆRE MED AT RØRE NOGET NÅR DEN KØRER.
+når den er færdig kommer der 3 3D strukture frem, en af CAD modellen, en af en point-cloud med MANGE points, og til sidst en point-cloud med gode points.
+.pcd filen burde komme når de 3 vinduer lukkes.
+

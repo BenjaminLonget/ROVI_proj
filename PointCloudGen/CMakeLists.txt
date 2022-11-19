@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+project(PCD_Gen)
+find_package(PCL 1.3 REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+add_executable(pcd_gen src/pcd_gen.cpp)
+target_link_libraries(pcd_gen ${PCL_LIBRARIES})

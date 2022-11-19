@@ -1,0 +1,3 @@
+/home/rovi2022/Workspace/project/PointCloudGen/build/CMakeFiles/pcd_gen.dir
+/home/rovi2022/Workspace/project/PointCloudGen/build/CMakeFiles/edit_cache.dir
+/home/rovi2022/Workspace/project/PointCloudGen/build/CMakeFiles/rebuild_cache.dir
