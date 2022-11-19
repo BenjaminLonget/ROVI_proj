@@ -103,8 +103,7 @@ void SamplePlugin::open (WorkCell* workcell)
         }
 
         _device = _wc->findDevice<SerialDevice> ("UR-6-85-5-A");
-        _gripper = _wc->findDevice<Device>("WSG50");
-        _gripper->setQ()
+        
         //const SerialDevice::Ptr device = _wc->findDevice<SerialDevice>("UR-6-85-5-A");
         
         _step   = -1;
@@ -188,12 +187,6 @@ void SamplePlugin::btnPressed ()
 {
     QObject* obj = sender ();
     if (obj == _btn0) {
-        //		log().info() << "Button 0\n";
-        //		// Toggle the timer on and off
-        //		if (!_timer25D->isActive())
-        //		    _timer25D->start(100); // run 10 Hz
-        //		else
-        //			_timer25D->stop();
         _timer->stop ();
         rw::math::Math::seed ();
         double extend  = 0.05;
@@ -214,6 +207,8 @@ void SamplePlugin::btnPressed ()
         //til heatmap:
         //Mat heatmap (, img.getWidth (), CV_8SC3);
         
+        //Dette for loop til at regne antal solutions
+        //tjek 1 fra siden, 1 fra toppen for hver 30 base pos til hver 5 flaske pos.
 
         for (double rollAngle = 0; rollAngle < 360.0; rollAngle += 1.0) {    // for every degree around the roll axis
 
@@ -243,6 +238,8 @@ void SamplePlugin::btnPressed ()
               << collisionFreeSolutions.size () << " collision-free inverse kinematics solutions!"
               << std::endl;
 
+        
+        //kun til RRTConnect mellem from og to for at bygge path. vi kan resette path her i stedet for i RRTConnect for at lave den fulde path.
         //bottleFrame->attachTo
         //bruger from Q, to Q, extend, maxTime
         createPathRRTConnect (from, collisionFreeSolutions.at(1), extend, maxTime);
@@ -259,13 +256,13 @@ void SamplePlugin::btnPressed ()
         else
             _step = 0;
     }
-    else if (obj == _spinBox) {
+    else if (obj == _spinBox) { //måske slideren?
         log ().info () << "spin value:" << _spinBox->value () << "\n";
     }
     else if (obj == _btn_im) {  //Get image knappen
         getImage ();
     }
-    else if (obj == _btn_scan) {    //Get scan mappeb
+    else if (obj == _btn_scan) {    //Get scan knappen
         get25DImage ();
     }
 }
@@ -296,6 +293,19 @@ void SamplePlugin::get25DImage ()
                 output << p (0) << " " << p (1) << " " << p (2) << "\n";
             }
             output.close ();
+        }
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+
+        if (pcl::io::loadPCDFile<pcl::PointXYZ> ("Scanner25D.pcd", *cloud) == -1) //* load the file
+        {
+            PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
+        }
+
+        pcl::visualization::CloudViewer viewer ("Simple Cloud Viewer");
+        viewer.showCloud (cloud);
+        while (!viewer.wasStopped ())
+        {
         }
     }
 }

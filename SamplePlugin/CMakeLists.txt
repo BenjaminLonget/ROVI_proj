@@ -28,6 +28,13 @@ find_package(RobWorkStudio REQUIRED)
 # Use OpenCV 4
 find_package(OpenCV 4 REQUIRED)
 
+# Use PCL
+find_package(PCL 1.3 REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
+
 # If we want to use ui files add them here
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -40,5 +47,5 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # The shared library to build:
 add_library(${PROJECT_NAME} MODULE src/SamplePlugin.cpp src/resources.qrc)
 target_link_libraries(
-    ${PROJECT_NAME} ${ROBWORKSTUDIO_LIBRARIES} ${ROBWORK_LIBRARIES} ${OpenCV_LIBS}
+    ${PROJECT_NAME} ${ROBWORKSTUDIO_LIBRARIES} ${ROBWORK_LIBRARIES} ${OpenCV_LIBS} ${PCL_LIBRARIES}
 )

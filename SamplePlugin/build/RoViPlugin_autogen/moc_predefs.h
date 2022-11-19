@@ -175,6 +175,7 @@
 #define __cpp_hex_float 201603L
 #define __GXX_ABI_VERSION 1016
 #define __FLT128_HAS_INFINITY__ 1
+#define kiss_fft_scalar double
 #define __FLT_MIN_EXP__ (-125)
 #define __GCC_HAVE_DWARF2_CFI_ASM 1
 #define __x86_64 1
@@ -207,7 +208,8 @@
 #define __DEC128_MAX__ 9.999999999999999999999999999999999E6144DL
 #define __FLT_MANT_DIG__ 24
 #define __LDBL_DECIMAL_DIG__ 21
-#define __VERSION__ "11.2.0"
+#define __VERSION__ "11.3.0"
+#define BOOST_IOSTREAMS_DYN_LINK 1
 #define __UINT64_C(c) c ## UL
 #define __cpp_unicode_characters 201411L
 #define _STDC_PREDEF_H 1
@@ -409,7 +411,7 @@
 #define __DEC128_MAX_EXP__ 6145
 #define __FLT32X_HAS_QUIET_NAN__ 1
 #define __ATOMIC_CONSUME 1
-#define __GNUC_MINOR__ 2
+#define __GNUC_MINOR__ 3
 #define __GLIBCXX_TYPE_INT_N_0 __int128
 #define __INT_FAST16_WIDTH__ 64
 #define __UINTMAX_MAX__ 0xffffffffffffffffUL
@@ -422,6 +424,7 @@
 #define __STDC__ 1
 #define __FLT32X_DIG__ 15
 #define __PTRDIFF_TYPE__ long int
+#define DISABLE_PCAP 1
 #define __ATOMIC_SEQ_CST 5
 #define BOOST_SERIALIZATION_DYN_LINK 1
 #define __FLT32X_MIN_10_EXP__ (-307)

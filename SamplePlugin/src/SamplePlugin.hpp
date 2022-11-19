@@ -36,6 +36,11 @@
 
 #include <functional>
 
+// Point Cloud Library
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+
 
 using namespace rw::common;
 using namespace rw::graphics;
