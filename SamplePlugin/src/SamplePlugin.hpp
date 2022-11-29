@@ -93,6 +93,7 @@ private slots:
     bool checkCollisions(Device::Ptr device, const State &state, const CollisionDetector &detector, const Q &q);
     void createPathRRTConnect(Q from, Q to,  double extend, double maxTime);
 	void printProjectionMatrix(std::string frameName);
+    void heatmap();
 
 private:
     static cv::Mat toOpenCVImage(const rw::sensor::Image& img);
