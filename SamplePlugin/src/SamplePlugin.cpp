@@ -453,3 +453,95 @@ void SamplePlugin::printProjectionMatrix (std::string frameName)
         }
     }
 }
+
+void SamplePlugin::heatmap()
+{
+    // Neccersary Mat
+    Mat im_table, im_gray, im_scalar, im_heatmap, im_color_from_heatmap;
+
+    // Import picture seen form above. 
+    im_table = imread("table.png", IMREAD_COLOR); // Consider IMREAD_COLOR.
+    cvtColor(im_table, im_gray, COLOR_RGB2GRAY);
+    namedWindow("gray");
+    imshow("gray", im_gray);
+    waitKey(0);
+
+    // Calculate size coefficient from table to pixel
+    int table_width = 1; // in meters
+    int table_height = 1;
+    int table_pixel_height = im_gray.size().height;
+    int table_pixel_width = im_gray.size().width;
+    int m2p_coefficient = table_pixel_width / table_pixel_width;
+
+    
+    //Define grap area
+    int grap_height = 0.1; //m
+    int grap_width = 0.2; 
+    int drop_height = 0.1;
+    int drop_width = 0.1;
+
+    // Define array with bottle positions 5 is enough.
+    //int bottle_position[] = []; 
+
+    // Define a map that is empty, but with the size of the grayscale.
+    im_scalar = im_gray.clone();
+    im_scalar.setTo(Scalar::all(0));
+
+
+    // For loop that runs all the possible configurations. 
+    for (int x = 0; x < table_width; x++)
+    {
+        for(int y = 0; y < table_height; y++)
+        {
+            //
+            int sum_reachability = 0;
+            // Define the pick and grap area.
+            if((y > table_height - grap_height) || (y < drop_height && x > table_width - drop_width) )
+            {
+                // Define for loop for bottle positions and side/top = total of 10*8 = 80.
+                //for( int pos = 0; pos < bottle_position.size(); pos++) 
+                //{
+                    // function or call to move botte. 
+                    // sum_reachability += reachability(top)
+                    // sum_reachability += freachability(side)
+                    // 
+                //}
+
+            }
+            // at position x,y save a value from reachability as a rectangl with the value from 0-255.
+            int heatmap_255 = 255/80 * sum_reachability;
+            rectangle(im_scalar, Point(x-1,y-1),Point(x+1,y+1), heatmap_255, -1);
+            
+        }
+    }
+    namedWindow("rectangles");
+    imshow("rectangles", im_scalar);
+    waitKey(0);
+    //Makes the heatmap from the information.
+    applyColorMap(im_scalar, im_heatmap, COLORMAP_JET);
+    namedWindow("color");
+    imshow("color", im_heatmap);
+    waitKey(0);
+
+    //Convert the heatmap to the picture of the table. 
+
+    for(int color_width = 0; color_width < im_heatmap.size().width; color_width++)
+    {
+        for(int color_height = 0; color_height < im_heatmap.size().height; color_height++)
+        {
+            // Checks if there is saved a value at the heatmap.
+            //if(im_heatmap.at<Vec3b>(color_width,color_height)[0] != 0 && im_heatmap.at<Vec3b>(color_width,color_height)[1] != && im_heatmap.at<Vec3b>(color_width,color_height)[2] != 0)
+            //{
+            //    im_table.at<Vec3b>(color_width,color_height)[0] = im_heatmap.at<Vec3b>(color_width,color_height)[0];
+            //    im_table.at<Vec3b>(color_width,color_height)[1] = im_heatmap.at<Vec3b>(color_width,color_height)[1];
+            //    im_table.at<Vec3b>(color_width,color_height)[2] = im_heatmap.at<Vec3b>(color_width,color_height)[2];
+            //}
+
+        }
+    }
+
+    namedWindow("heatmap");
+    imshow("heatmap", im_table);
+    waitKey(0);
+}
+    
