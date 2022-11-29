@@ -267,6 +267,92 @@ void SamplePlugin::btnPressed ()
     }
 }
 
+void SamplePlugin::_3DTo3DPointCloud(pcl::PointCloud<PointT>::Ptr cloudIn, pcl::PointCloud<PointT>::Ptr object)
+{
+    pcl::PointCloud<PointT>::Ptr cloud = cloudIn;
+    pcl::PointCloud<PointT>::Ptr bottle_cloud = object;
+
+    {                                                                                                                                            //  Viser den første iteration af clouds
+        pcl::visualization::PCLVisualizer viewer("Initial visualizer");                                                                          // denne er vidst multithreaded
+        viewer.addPointCloud<PointT>(cloud, pcl::visualization::PointCloudColorHandlerCustom<PointT>(cloud, 255, 255, 255), "Scan");             // tilføjer med farven hvid
+        viewer.addPointCloud<PointT>(bottle_cloud, pcl::visualization::PointCloudColorHandlerCustom<PointT>(bottle_cloud, 255, 0, 0), "Bottle"); // tilføjer med farven rød
+        viewer.spin();                                                                                                                           // for at vise på en anden tråd?
+    }
+
+    // Compute surface normals
+    {
+        pcl::ScopeTime t("Surface normals");
+        pcl::NormalEstimation<PointT, PointT> ne;
+        ne.setKSearch(10);
+
+        ne.setInputCloud(bottle_cloud);
+        ne.compute(*bottle_cloud);
+
+        ne.setInputCloud(cloud);
+        ne.compute(*cloud);
+    }
+
+    // Compute shape features
+    pcl::PointCloud<FeatureT>::Ptr object_features(new pcl::PointCloud<FeatureT>);
+    pcl::PointCloud<FeatureT>::Ptr scene_features(new pcl::PointCloud<FeatureT>);
+    {
+        pcl::ScopeTime t("Shape features");
+
+        pcl::SpinImageEstimation<PointT, PointT, FeatureT> spin;
+        spin.setRadiusSearch(0.05);
+
+        spin.setInputCloud(bottle_cloud);
+        spin.setInputNormals(bottle_cloud);
+        spin.compute(*object_features);
+
+        spin.setInputCloud(cloud);
+        spin.setInputNormals(cloud);
+        spin.compute(*scene_features);
+    }
+
+    // Find feature matches
+    pcl::Correspondences corr(object_features->size());
+    {
+        pcl::ScopeTime t("Feature matches");
+        for(size_t i = 0; i < object_features->size(); ++i) {
+            corr[i].index_query = i;
+            nearest_feature(object_features->points[i], *scene_features, corr[i].index_match, corr[i].distance);
+        }
+    }
+    
+    // Show matches
+    {
+        pcl::visualization::PCLVisualizer v("Matches");
+        v.addPointCloud<PointT>(bottle_cloud, pcl::visualization::PointCloudColorHandlerCustom<PointT>(bottle_cloud, 0, 255, 0), "object");
+        v.addPointCloud<PointT>(cloud, pcl::visualization::PointCloudColorHandlerCustom<PointT>(cloud, 255, 0, 0),"scene");
+        v.addCorrespondences<PointT>(bottle_cloud, cloud, corr, 1);
+        v.spin();
+    }
+
+}
+
+inline float dist_sq(const FeatureT& query, const FeatureT& target) {
+    float result = 0.0;
+    for(int i = 0; i < FeatureT::descriptorSize(); ++i) {
+        const float diff = reinterpret_cast<const float*>(&query)[i] - reinterpret_cast<const float*>(&target)[i];
+        result += diff * diff;
+    }
+    
+    return result;
+}
+
+void nearest_feature(const FeatureT& query, const pcl::PointCloud<FeatureT>& target, int &idx, float &distsq) {
+    idx = 0;
+    distsq = dist_sq(query, target[0]);
+    for(size_t i = 1; i < target.size(); ++i) {
+        const float disti = dist_sq(query, target[i]);
+        if(disti < distsq) {
+            idx = i;
+            distsq = disti;
+        }
+    }
+}
+
 void SamplePlugin::get25DImage ()
 {
     if (_framegrabber25D != NULL) {
@@ -295,18 +381,20 @@ void SamplePlugin::get25DImage ()
             output.close ();
         }
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<PointT>::Ptr cloud (new pcl::PointCloud<PointT>);
+        pcl::PointCloud<PointT>::Ptr bottle_cloud (new pcl::PointCloud<PointT>);
 
-        if (pcl::io::loadPCDFile<pcl::PointXYZ> ("Scanner25D.pcd", *cloud) == -1) //* load the file
+        if (pcl::io::loadPCDFile<PointT> ("Scanner25D.pcd", *cloud) == -1) //* load the file
         {
-            PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
+            PCL_ERROR ("Couldn't read file Scanner25D.pcd \n");
+        }
+        
+        if (pcl::io::loadPCDFile<PointT> ("Bottle.pcd", *bottle_cloud) == -1) //* load the bottle point cloud
+        {
+            PCL_ERROR ("Couldn't read file Bottle.pcd \n");
         }
 
-        pcl::visualization::CloudViewer viewer ("Simple Cloud Viewer");
-        viewer.showCloud (cloud);
-        while (!viewer.wasStopped ())
-        {
-        }
+        _3DTo3DPointCloud(cloud, bottle_cloud);
     }
 }
 
