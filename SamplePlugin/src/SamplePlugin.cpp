@@ -221,11 +221,13 @@ void SamplePlugin::btnPressed ()
             
             std::vector< Q > solutions = getConfigurations("Bottle", "GraspTCP", _device, _wc, _state);
 
-            for (unsigned int i = 0; i < solutions.size (); i++) {
+            for (unsigned int i = 0; i < solutions.size (); i++) 
+            {
             // set the robot in that configuration and check if it is in collision
                 _device->setQ (solutions[i], _state);
 
-                if (!detector.inCollision (_state)) {
+                if (!detector.inCollision (_state)) 
+                {
                     collisionFreeSolutions.push_back (solutions[i]);    // save it
                     //getRobWorkStudio ()->setState (state);
                     break;                                              // we only need one
@@ -542,6 +544,36 @@ void SamplePlugin::printProjectionMatrix (std::string frameName)
     }
 }
 
+int SamplePlugin::reachability()
+{
+    // Define array with bottle positions 5 is enough.
+    MovableFrame::Ptr bottleFrame = _wc->findFrame< MovableFrame > ("Bottle");
+    if (bottleFrame.isNull ()) 
+    {
+        RW_THROW ("COULD not find movable frame Bottle ... check model");
+    }
+    
+
+    std::vector< Q > collisionFreeSolutions;
+    // create Collision Detector
+    rw::proximity::CollisionDetector detector (_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy ());
+    std::vector< Q > solutions = getConfigurations("Bottle", "GraspTCP", _device, _wc, _state);
+
+    for (unsigned int i = 0; i < solutions.size (); i++) 
+    {
+        // set the robot in that configuration and check if it is in collision
+        _device->setQ (solutions[i], _state);
+
+        if (!detector.inCollision (_state)) 
+        {
+            collisionFreeSolutions.push_back (solutions[i]);    // save it
+            //getRobWorkStudio ()->setState (state);
+            break;                                              // we only need one
+        }
+    }
+    return collisionFreeSolutions.size();
+}
+
 void SamplePlugin::heatmap()
 {
     // Neccersary Mat
@@ -569,6 +601,12 @@ void SamplePlugin::heatmap()
     int drop_width = 0.1;
 
     // Define array with bottle positions 5 is enough.
+    MovableFrame::Ptr bottleFrame = _wc->findFrame< MovableFrame > ("Bottle");
+    if (bottleFrame.isNull ()) {
+        RW_THROW ("COULD not find movable frame Bottle ... check model");
+    }
+    
+    bottleFrame->moveTo (Transform3D(Vector3D<>(0, 0, 0.11), RPY<>(0, 0, 1.571)), _state);
     //int bottle_position[] = []; 
 
     // Define a map that is empty, but with the size of the grayscale.
@@ -587,17 +625,43 @@ void SamplePlugin::heatmap()
             if((y > table_height - grap_height) || (y < drop_height && x > table_width - drop_width) )
             {
                 // Define for loop for bottle positions and side/top = total of 10*8 = 80.
-                //for( int pos = 0; pos < bottle_position.size(); pos++) 
-                //{
-                    // function or call to move botte. 
-                    // sum_reachability += reachability(top)
-                    // sum_reachability += freachability(side)
-                    // 
-                //}
+                for( int pos = 0; pos < 5; pos++) 
+                {
+                     // function or call to move botte. 
+                     if(pos == 0)
+                     {
+                        bottleFrame->moveTo (Transform3D(Vector3D<>(0.5, 0, 0.11), RPY<>(0, 0, 1.571)), _state);
+    
+                     }
+                     else if(pos == 1)
+                     {
+                        bottleFrame->moveTo (Transform3D(Vector3D<>(-0.5, 0, 0.11), RPY<>(0, 0, 1.571)), _state);
+                     }
+                     else if(pos == 2)
+                     {
+                        bottleFrame->moveTo (Transform3D(Vector3D<>(0, 0.5, 0.11), RPY<>(0, 0, 1.571)), _state);
+                     }
+                     else if(pos == 3)
+                     {
+                        bottleFrame->moveTo (Transform3D(Vector3D<>(0, -0.5, 0.11), RPY<>(0, 0, 1.571)), _state);
+                     }
+                     else if(pos == 4)
+                     {
+                        bottleFrame->moveTo (Transform3D(Vector3D<>(0.5, 0.5, 0.11), RPY<>(0, 0, 1.571)), _state);
+                     }
+                     else
+                     {
+                        break;
+                     }                                                               
+                     sum_reachability += reachability();
+                    
+                }
 
             }
+            // Max number possible for reachability 
+            int max_sum = 40;
             // at position x,y save a value from reachability as a rectangl with the value from 0-255.
-            int heatmap_255 = 255/80 * sum_reachability;
+            int heatmap_255 = 255/max_sum * sum_reachability;
             rectangle(im_scalar, Point(x-1,y-1),Point(x+1,y+1), heatmap_255, -1);
             
         }
