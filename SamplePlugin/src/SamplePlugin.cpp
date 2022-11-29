@@ -544,6 +544,8 @@ void SamplePlugin::printProjectionMatrix (std::string frameName)
     }
 }
 
+
+/* Function call that is to be used later*/
 int SamplePlugin::reachability()
 {
     // Define array with bottle positions 5 is enough.
@@ -557,23 +559,35 @@ int SamplePlugin::reachability()
     std::vector< Q > collisionFreeSolutions;
     // create Collision Detector
     rw::proximity::CollisionDetector detector (_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy ());
-    std::vector< Q > solutions = getConfigurations("Bottle", "GraspTCP", _device, _wc, _state);
 
-    for (unsigned int i = 0; i < solutions.size (); i++) 
+    for (double rollAngle = 0; rollAngle < 360.0; rollAngle += 1.0)
     {
-        // set the robot in that configuration and check if it is in collision
-        _device->setQ (solutions[i], _state);
+        bottleFrame->moveTo (Transform3D(Vector3D<> (bottleFrame->getTransform (_state).P()[0], bottleFrame->getTransform (_state).P()[1], 0.11), RPY<>(rollAngle * Deg2Rad, 0, 1.571)), _state);
 
-        if (!detector.inCollision (_state)) 
+        std::vector< Q > solutions = getConfigurations("Bottle", "GraspTCP", _device, _wc, _state);
+
+        for (unsigned int i = 0; i < solutions.size (); i++) 
         {
-            collisionFreeSolutions.push_back (solutions[i]);    // save it
-            //getRobWorkStudio ()->setState (state);
-            break;                                              // we only need one
+        // set the robot in that configuration and check if it is in collision
+            _device->setQ (solutions[i], _state);
+
+            if (!detector.inCollision (_state)) 
+            {
+                collisionFreeSolutions.push_back (solutions[i]);    // save it
+                //getRobWorkStudio ()->setState (state);
+                break;                                              // we only need one
+            }
         }
     }
+
     return collisionFreeSolutions.size();
 }
 
+/* FUNCTION TO MAKE THE HEAPMAP. CURRENTLY IT STILL NEEDS IMPLEMANTATION OF THE FOLLOWING:
+1. Correct for loop 
+2. Movement of base
+3. XX?
+*/
 void SamplePlugin::heatmap()
 {
     // Neccersary Mat
@@ -591,12 +605,14 @@ void SamplePlugin::heatmap()
     int table_height = 1;
     int table_pixel_height = im_gray.size().height;
     int table_pixel_width = im_gray.size().width;
-    int m2p_coefficient = table_pixel_width / table_pixel_width;
+    int m2p_coefficient_width = table_width / table_pixel_width;
+    int m2p_coefficient_height = table_height / table_pixel_height;
+
 
     
     //Define grap area
     int grap_height = 0.1; //m
-    int grap_width = 0.2; 
+    //int grap_width = 0.2; //Bruges ikke 
     int drop_height = 0.1;
     int drop_width = 0.1;
 
@@ -615,11 +631,13 @@ void SamplePlugin::heatmap()
 
 
     // For loop that runs all the possible configurations. 
-    for (int x = 0; x < table_width; x++)
+    for (int x = 0; x < table_width; x += m2p_coefficient_width)
     {
         for(int y = 0; y < table_height; y++)
         {
-            //
+            // Move base position 
+            /* Function for moving the base*/
+
             int sum_reachability = 0;
             // Define the pick and grap area.
             if((y > table_height - grap_height) || (y < drop_height && x > table_width - drop_width) )
@@ -676,18 +694,17 @@ void SamplePlugin::heatmap()
     waitKey(0);
 
     //Convert the heatmap to the picture of the table. 
-
     for(int color_width = 0; color_width < im_heatmap.size().width; color_width++)
     {
         for(int color_height = 0; color_height < im_heatmap.size().height; color_height++)
         {
             // Checks if there is saved a value at the heatmap.
-            //if(im_heatmap.at<Vec3b>(color_width,color_height)[0] != 0 && im_heatmap.at<Vec3b>(color_width,color_height)[1] != && im_heatmap.at<Vec3b>(color_width,color_height)[2] != 0)
-            //{
-            //    im_table.at<Vec3b>(color_width,color_height)[0] = im_heatmap.at<Vec3b>(color_width,color_height)[0];
-            //    im_table.at<Vec3b>(color_width,color_height)[1] = im_heatmap.at<Vec3b>(color_width,color_height)[1];
-            //    im_table.at<Vec3b>(color_width,color_height)[2] = im_heatmap.at<Vec3b>(color_width,color_height)[2];
-            //}
+            if(im_heatmap.at<Vec3b>(color_width,color_height)[0] != 0 && im_heatmap.at<Vec3b>(color_width,color_height)[1] != 0 && im_heatmap.at<Vec3b>(color_width,color_height)[2] != 0)
+            {
+                im_table.at<Vec3b>(color_width,color_height)[0] = im_heatmap.at<Vec3b>(color_width,color_height)[0];
+                im_table.at<Vec3b>(color_width,color_height)[1] = im_heatmap.at<Vec3b>(color_width,color_height)[1];
+                im_table.at<Vec3b>(color_width,color_height)[2] = im_heatmap.at<Vec3b>(color_width,color_height)[2];
+            }
 
         }
     }

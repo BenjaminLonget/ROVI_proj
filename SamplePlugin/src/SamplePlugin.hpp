@@ -103,7 +103,10 @@ private slots:
     bool checkCollisions(Device::Ptr device, const State &state, const CollisionDetector &detector, const Q &q);
     void createPathRRTConnect(Q from, Q to,  double extend, double maxTime);
 	void printProjectionMatrix(std::string frameName);
+    int reachability();
     void heatmap();
+
+
 
 private:
     inline float dist_sq(const FeatureT& query, const FeatureT& target);
