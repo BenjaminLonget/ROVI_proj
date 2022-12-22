@@ -13,7 +13,7 @@
 #include <rwlibs/pathplanners/rrt/RRTQToQPlanner.hpp>
 #include <rwlibs/proximitystrategies/ProximityStrategyFactory.hpp>
 #include <rw/trajectory/LinearInterpolator.hpp>
-
+#include <rw/trajectory/ParabolicBlend.hpp>
 
 // RobWorkStudio includes
 #include <RobWorkStudioConfig.hpp> // For RWS_USE_QT5 definition
@@ -36,18 +36,19 @@
 
 #include <functional>
 
-// Point Cloud Library
-#include <pcl/visualization/cloud_viewer.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-#include <pcl/common/random.h>
-#include <pcl/common/time.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/features/spin_image.h>
-#include <pcl/registration/correspondence_rejection_sample_consensus.h>
-#include <pcl/registration/transformation_estimation_svd.h>
-#include <pcl/visualization/pcl_visualizer.h>
+// // Point Cloud Library
+// #include <pcl/visualization/cloud_viewer.h>
+// #include <pcl/point_types.h>
+// #include <pcl/point_cloud.h>
+// #include <pcl/common/random.h>
+// #include <pcl/common/time.h>
+// #include <pcl/features/normal_3d.h>
+// #include <pcl/features/spin_image.h>
+// #include <pcl/io/pcd_io.h>
+// #include <pcl/registration/correspondence_rejection_sample_consensus.h>
+// #include <pcl/registration/transformation_estimation_svd.h>
+// #include <pcl/visualization/pcl_visualizer.h>
+// #include <pcl/filters/conditional_removal.h>
 
 using namespace rw::common;
 using namespace rw::graphics;
@@ -66,18 +67,16 @@ using namespace rw::trajectory;
 using namespace rwlibs::pathplanners;
 using namespace rwlibs::proximitystrategies;
 
-
 using namespace rws;
-
+//using namespace pcl;
 using namespace cv;
 
 using namespace std::placeholders;
-
-typedef pcl::PointNormal PointT;
-typedef pcl::Histogram<153> FeatureT;
-
+// typedef pcl::PointNormal PointT;
+// typedef pcl::Histogram<153> FeatureT;
 class SamplePlugin: public rws::RobWorkStudioPlugin, private Ui::SamplePlugin
 {
+
 Q_OBJECT
 Q_INTERFACES( rws::RobWorkStudioPlugin )
 Q_PLUGIN_METADATA(IID "dk.sdu.mip.Robwork.RobWorkStudioPlugin/0.1" FILE "plugin.json")
@@ -93,6 +92,10 @@ public:
     virtual void initialize();
     
 private slots:
+    //float dist_sq(const FeatureT& query, const FeatureT& target);
+    //void nearest_feature(const FeatureT& query, const pcl::PointCloud<FeatureT>& target, int &idx, float &distsq);
+    //void nearest_feature(const FeatureT& query, const PointCloud<FeatureT>& target, int &idx, float &distsq);
+    //void _3DTo3DPointCloud(pcl::PointCloud<PointT>::Ptr cloudIn, pcl::PointCloud<PointT>::Ptr object);
 
     void btnPressed();
     void timer();
@@ -103,17 +106,21 @@ private slots:
     bool checkCollisions(Device::Ptr device, const State &state, const CollisionDetector &detector, const Q &q);
     void createPathRRTConnect(Q from, Q to,  double extend, double maxTime);
 	void printProjectionMatrix(std::string frameName);
-    void heatmap();
 
 private:
-    inline float dist_sq(const FeatureT& query, const FeatureT& target);
-    void nearest_feature(const FeatureT& query, const pcl::PointCloud<FeatureT>& target, int &idx, float &distsq);
     static cv::Mat toOpenCVImage(const rw::sensor::Image& img);
+    void createPathP2PPoly(std::vector<Q> points);
+    int pathPosAtBott = 50000;
+    void runRRT();
+    std::vector<Q> createPointsList();
+    bool withinLimit (Device::Ptr device, LinearInterpolator< Q > interp);
+    std::vector<LinearInterpolator<Q>> linInterpol(std::vector<Q> points);
+    
+
     //std::vector< Q > getConfigurations (const std::string nameGoal, const std::string nameTcp, rw::models::SerialDevice::Ptr robot, rw::models::WorkCell::Ptr wc, State& state);
-    void _3DTo3DPointCloud(pcl::PointCloud<PointT>::Ptr cloudIn, pcl::PointCloud<PointT>::Ptr object);
     QTimer* _timer;
     QTimer* _timer25D;
-    
+
     rw::models::WorkCell::Ptr _wc;
     rw::kinematics::State _state;
     rwlibs::opengl::RenderImage *_textureRender, *_bgRender;

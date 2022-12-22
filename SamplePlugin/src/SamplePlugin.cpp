@@ -2,6 +2,9 @@
 
 #include <filesystem>
 
+//typedef pcl::PointNormal PointT;
+//typedef pcl::Histogram<153> FeatureT;
+
 SamplePlugin::SamplePlugin () : RobWorkStudioPlugin ("SamplePluginUI", QIcon ((std::filesystem::path(__FILE__).parent_path()/"pa_icon.png").c_str()))
 {
     setupUi (this);
@@ -39,6 +42,8 @@ void SamplePlugin::initialize ()
     // Auto load workcell
 
     std::filesystem::path wc_path (__FILE__);
+    //wc_path          = wc_path.parent_path() / "../../WorkCellObstacle/Scene.wc.xml";
+    //switch comment to load other workcell
     wc_path          = wc_path.parent_path() / "../../Project_WorkCell/Scene.wc.xml";
 	std::cout << "wc path: " << wc_path << std::endl;
     WorkCell::Ptr wc = WorkCellLoader::Factory::load (wc_path.string ());
@@ -178,7 +183,6 @@ std::vector< Q > getConfigurations (const std::string nameGoal, const std::strin
 
     rw::invkin::ClosedFormIKSolverUR::Ptr closedFormSovler =
         rw::core::ownedPtr (new rw::invkin::ClosedFormIKSolverUR (robot, state));
-
     return closedFormSovler->solve (targetAt, state);
 }
 
@@ -189,74 +193,54 @@ void SamplePlugin::btnPressed ()
     if (obj == _btn0) {
         _timer->stop ();
         rw::math::Math::seed ();
-        double extend  = 0.05;
-        double maxTime = 60;
-        Q from (6, 1.571, -1.572, -1.572, -1.572, 1.571, 0);
 
-/*******************************************************************************************************************/        
-        MovableFrame::Ptr bottleFrame = _wc->findFrame< MovableFrame > ("Bottle");
-        if (bottleFrame.isNull ()) {
-            RW_THROW ("COULD not find movable frame Bottle ... check model");
+        // double extend  = 0.15;
+        // double maxTime = 60;
+        
+        
+        /***************linear interpol****************************/
+        std::vector<Q> points = createPointsList();
+        std::vector<LinearInterpolator<Q>> interps = linInterpol(points);
+        TimedStatePath timePath;
+        TimedState timeState;
+
+        for(size_t j = 0; j < interps.size(); j++){
+            for()
+            timePath.push_back(interps[j]);
         }
 
-        std::vector< Q > collisionFreeSolutions;
-        // create Collision Detector
-        rw::proximity::CollisionDetector detector (_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy ());
-        
-        
-        //til heatmap:
-        //Mat heatmap (, img.getWidth (), CV_8SC3);
-        
-        //Dette for loop til at regne antal solutions
-        //tjek 1 fra siden, 1 fra toppen for hver 30 base pos til hver 5 flaske pos.
+        // for (double t = 0; t < duration; t += 0.05) //duration ligger i linInterpol timestatepath til pathloader smides i for loopet i lininterpol
+        // {
+        //     _device->setQ(interp.x(t), _state);
+        //     timePath.push_back(TimedState(t, _state));
+        // }
+        // durationsum += duration;
 
-        for (double rollAngle = 0; rollAngle < 360.0; rollAngle += 1.0) {    // for every degree around the roll axis
+        PathLoader::storeTimedStatePath(*_wc, timePath, "./linearvis.rwplay");
 
-            //bottleFrame->moveTo (Transform3D<> (Vector3D<> (bottleFrame->getTransform (_state).P ()), RPY<> (rollAngle * Deg2Rad, 0, 1.571)), _state);
-            
-            //bottleFrame->moveTo (Transform3D(Vector3D(0.0, 0.474, 0.110), RPY<> (rollAngle * Deg2Rad, 0, 1.571)), _state);  //Virker når vi hardcoder bottle, getTransform tager udgangspunkt i bordet
-            
-            //Hvor kun z værdien er hardcoded. ville være bedre bare at finde transform fra WORLD
-            bottleFrame->moveTo (Transform3D(Vector3D<> (bottleFrame->getTransform (_state).P()[0], bottleFrame->getTransform (_state).P()[1], 0.11), RPY<>(rollAngle * Deg2Rad, 0, 1.571)), _state);
-            
-            std::vector< Q > solutions = getConfigurations("Bottle", "GraspTCP", _device, _wc, _state);
-
-            for (unsigned int i = 0; i < solutions.size (); i++) 
-            {
-            // set the robot in that configuration and check if it is in collision
-                _device->setQ (solutions[i], _state);
-
-                if (!detector.inCollision (_state)) 
-                {
-                    collisionFreeSolutions.push_back (solutions[i]);    // save it
-                    //getRobWorkStudio ()->setState (state);
-                    break;                                              // we only need one
-                }
-            }
-        }
-        //Transform3D(Vector3D(0, 0.474, 0.21), Rotation3D(-0.000203673, -0.000203673, -1, -1, 4.14828e-08, 0.000203673, -0, 1, -0.000203673))
-
-        std::cout << "Current position of the robot vs object to be grasped has: "
-              << collisionFreeSolutions.size () << " collision-free inverse kinematics solutions!"
-              << std::endl;
-
-        
-        //kun til RRTConnect mellem from og to for at bygge path. vi kan resette path her i stedet for i RRTConnect for at lave den fulde path.
-        //bottleFrame->attachTo
-        //bruger from Q, to Q, extend, maxTime
-        createPathRRTConnect (from, collisionFreeSolutions.at(1), extend, maxTime);
-        
+        SamplePlugin::createPathP2PPoly(points);
+        /********************************************/
+        /**************************************************RRT connect testing*****************************************************************/
+        //runRRT();
     }
     else if (obj == _btn1) {
         log ().info () << "Button 1\n";
-        std::cout << endl << "_btn1 pressed!\n";
         // Toggle the timer on and off
         if (!_timer->isActive ()) {
             _timer->start (100);    // run 10 Hz
             _step = 0;
         }
-        else
+        else{
             _step = 0;
+        }
+        
+        std::ofstream RRTpath("rrt_path.csv");
+        RRTpath << "x, y, z\n";
+        //for(size_t l = 0; l < _path.size(); l++){
+        //    _device->setQ (_path.at (l), _state);
+        //    RRTpath << _device->getEnd()->getTransform(_state).P()[0] << "," << _device->getEnd()->getTransform(_state).P()[1] << "," << _device->getEnd()->getTransform(_state).P()[2] << "\n";
+       // }
+        RRTpath.close();
     }
     else if (obj == _spinBox) { //måske slideren?
         log ().info () << "spin value:" << _spinBox->value () << "\n";
@@ -269,91 +253,6 @@ void SamplePlugin::btnPressed ()
     }
 }
 
-void SamplePlugin::_3DTo3DPointCloud(pcl::PointCloud<PointT>::Ptr cloudIn, pcl::PointCloud<PointT>::Ptr object)
-{
-    pcl::PointCloud<PointT>::Ptr cloud = cloudIn;
-    pcl::PointCloud<PointT>::Ptr bottle_cloud = object;
-
-    {                                                                                                                                            //  Viser den første iteration af clouds
-        pcl::visualization::PCLVisualizer viewer("Initial visualizer");                                                                          // denne er vidst multithreaded
-        viewer.addPointCloud<PointT>(cloud, pcl::visualization::PointCloudColorHandlerCustom<PointT>(cloud, 255, 255, 255), "Scan");             // tilføjer med farven hvid
-        viewer.addPointCloud<PointT>(bottle_cloud, pcl::visualization::PointCloudColorHandlerCustom<PointT>(bottle_cloud, 255, 0, 0), "Bottle"); // tilføjer med farven rød
-        viewer.spin();                                                                                                                           // for at vise på en anden tråd?
-    }
-
-    // Compute surface normals
-    {
-        pcl::ScopeTime t("Surface normals");
-        pcl::NormalEstimation<PointT, PointT> ne;
-        ne.setKSearch(10);
-
-        ne.setInputCloud(bottle_cloud);
-        ne.compute(*bottle_cloud);
-
-        ne.setInputCloud(cloud);
-        ne.compute(*cloud);
-    }
-
-    // Compute shape features
-    pcl::PointCloud<FeatureT>::Ptr object_features(new pcl::PointCloud<FeatureT>);
-    pcl::PointCloud<FeatureT>::Ptr scene_features(new pcl::PointCloud<FeatureT>);
-    {
-        pcl::ScopeTime t("Shape features");
-
-        pcl::SpinImageEstimation<PointT, PointT, FeatureT> spin;
-        spin.setRadiusSearch(0.05);
-
-        spin.setInputCloud(bottle_cloud);
-        spin.setInputNormals(bottle_cloud);
-        spin.compute(*object_features);
-
-        spin.setInputCloud(cloud);
-        spin.setInputNormals(cloud);
-        spin.compute(*scene_features);
-    }
-
-    // Find feature matches
-    pcl::Correspondences corr(object_features->size());
-    {
-        pcl::ScopeTime t("Feature matches");
-        for(size_t i = 0; i < object_features->size(); ++i) {
-            corr[i].index_query = i;
-            nearest_feature(object_features->points[i], *scene_features, corr[i].index_match, corr[i].distance);
-        }
-    }
-    
-    // Show matches
-    {
-        pcl::visualization::PCLVisualizer v("Matches");
-        v.addPointCloud<PointT>(bottle_cloud, pcl::visualization::PointCloudColorHandlerCustom<PointT>(bottle_cloud, 0, 255, 0), "object");
-        v.addPointCloud<PointT>(cloud, pcl::visualization::PointCloudColorHandlerCustom<PointT>(cloud, 255, 0, 0),"scene");
-        v.addCorrespondences<PointT>(bottle_cloud, cloud, corr, 1);
-        v.spin();
-    }
-
-}
-
-inline float dist_sq(const FeatureT& query, const FeatureT& target) {
-    float result = 0.0;
-    for(int i = 0; i < FeatureT::descriptorSize(); ++i) {
-        const float diff = reinterpret_cast<const float*>(&query)[i] - reinterpret_cast<const float*>(&target)[i];
-        result += diff * diff;
-    }
-    
-    return result;
-}
-
-void nearest_feature(const FeatureT& query, const pcl::PointCloud<FeatureT>& target, int &idx, float &distsq) {
-    idx = 0;
-    distsq = dist_sq(query, target[0]);
-    for(size_t i = 1; i < target.size(); ++i) {
-        const float disti = dist_sq(query, target[i]);
-        if(disti < distsq) {
-            idx = i;
-            distsq = disti;
-        }
-    }
-}
 
 void SamplePlugin::get25DImage ()
 {
@@ -361,12 +260,14 @@ void SamplePlugin::get25DImage ()
         for (size_t i = 0; i < _cameras25D.size (); i++) {
             // Get the image as a RW image
             Frame* cameraFrame25D = _wc->findFrame (_cameras25D[i]);    // "Camera");
+            
             _framegrabber25D->grab (cameraFrame25D, _state);
 
             // const Image& image = _framegrabber->getImage();
 
             const rw::geometry::PointCloud* img = &(_framegrabber25D->getImage ());
-
+            
+            
             std::ofstream output (_cameras25D[i] + ".pcd");
             output << "# .PCD v.5 - Point Cloud Data file format\n";
             output << "FIELDS x y z\n";
@@ -382,21 +283,7 @@ void SamplePlugin::get25DImage ()
             }
             output.close ();
         }
-
-        pcl::PointCloud<PointT>::Ptr cloud (new pcl::PointCloud<PointT>);
-        pcl::PointCloud<PointT>::Ptr bottle_cloud (new pcl::PointCloud<PointT>);
-
-        if (pcl::io::loadPCDFile<PointT> ("Scanner25D.pcd", *cloud) == -1) //* load the file
-        {
-            PCL_ERROR ("Couldn't read file Scanner25D.pcd \n");
-        }
-        
-        if (pcl::io::loadPCDFile<PointT> ("Bottle.pcd", *bottle_cloud) == -1) //* load the bottle point cloud
-        {
-            PCL_ERROR ("Couldn't read file Bottle.pcd \n");
-        }
-
-        _3DTo3DPointCloud(cloud, bottle_cloud);
+    
     }
 }
 
@@ -441,6 +328,17 @@ void SamplePlugin::timer ()
 {
     if (0 <= _step && (size_t) _step < _path.size ()) {
         _device->setQ (_path.at (_step), _state);
+        //std::ofstream RRTout;
+        //RRTout.open("rrt_path.csv", ios_base::app);
+        //RRTout << _device->baseTend(_state).P()[0] << "," << _device->baseTend(_state).P()[1] << "," << _device->baseTend(_state).P()[2] << "\n";
+        //RRTout.close();
+        if(_step == pathPosAtBott){
+            
+            MovableFrame::Ptr bottleFrame = _wc->findFrame< MovableFrame > ("Bottle");
+            bottleFrame->attachTo(_wc->findFrame< FixedFrame > ("GraspTCP"), _state);
+            bottleFrame->moveTo(Transform3D(Vector3D<>(0.000, 0.473, 0.11), RPY<>(0, 0, 1.571)), _state);
+        }
+       
         getRobWorkStudio ()->setState (_state);
         _step++;
     }
@@ -485,7 +383,7 @@ void SamplePlugin::createPathRRTConnect (Q from, Q to, double extend, double max
     QToQPlanner::Ptr planner =
         RRTPlanner::makeQToQPlanner (constraint, sampler, metric, extend, RRTPlanner::RRTConnect);
 
-    _path.clear ();     /************************flyt clear til knap funk, så begge paths kan lægges sammen. så kan pos for første goal bruges til rrt til næste og evt til at attache bottle***************************/
+
     if (!checkCollisions (_device, _state, detector, from))
         cout << from << " is in colission!" << endl;
     if (!checkCollisions (_device, _state, detector, to))         
@@ -507,10 +405,10 @@ void SamplePlugin::createPathRRTConnect (Q from, Q to, double extend, double max
         LinearInterpolator< Q > linInt (from, to, duration);
         QPath tempQ;
         for (int i = 0; i < duration + 1; i++) {
-            tempQ.push_back (linInt.x (i));
+            _path.push_back (linInt.x (i));
         }
 
-        _path = tempQ;
+        //_path = tempQ;
     }
 }
 
@@ -544,156 +442,198 @@ void SamplePlugin::printProjectionMatrix (std::string frameName)
     }
 }
 
-int SamplePlugin::reachability()
+void SamplePlugin::createPathP2PPoly(std::vector<Q> points)     //ændre til at spise vec af interps. find collisions
 {
-    // Define array with bottle positions 5 is enough.
-    MovableFrame::Ptr bottleFrame = _wc->findFrame< MovableFrame > ("Bottle");
-    if (bottleFrame.isNull ()) 
-    {
-        RW_THROW ("COULD not find movable frame Bottle ... check model");
-    }
+
+
+}
+
+std::vector<LinearInterpolator<Q>> SamplePlugin::linInterpol(std::vector<Q> points){
+    std::vector<LinearInterpolator<Q>> interps;
     
+    for (int i = 0; i < points.size() - 1; i++)
+    {
+        double minDur = 0.0001;
+        double maxDur = 10;
 
-    std::vector< Q > collisionFreeSolutions;
+        while (!withinLimit(_device, LinearInterpolator<Q>(points[i], points[i + 1], maxDur)))
+        {
+            maxDur += 10;
+        }
+
+        double duration = (maxDur + minDur) / 2;
+        for (size_t j = 0; j < 100; j++)
+        {
+            if (withinLimit(_device, LinearInterpolator<Q>(points[i], points[i + 1], duration)))
+            {
+                maxDur = duration;
+            }
+            else
+            {
+                minDur = duration;
+            }
+            duration = (maxDur + minDur) / 2;
+        }
+        LinearInterpolator<Q> interp(points[i], points[i + 1], duration);
+        interps.push_back(interp);
+    }
+    return interps;
+}
+
+bool SamplePlugin::withinLimit (Device::Ptr device, LinearInterpolator< Q > interp)
+{
+    Q velLimit   = device->getVelocityLimits ();
+    Q accelLimit = device->getAccelerationLimits ();
+
+    for (double t = 0; t < interp.duration (); t += 0.05) {
+        for (size_t i = 0; i < device->getDOF (); i++) {
+            if (abs (interp.dx (t)[i]) > velLimit[i]) {
+                return false;
+            }
+            if (abs (interp.ddx (t)[i]) > accelLimit[i]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+
+void SamplePlugin::runRRT(){
+    double extend = 0.15;
+    double maxTime = 60;
+    Q _from(6, 1.571, -1.572, -1.572, -1.572, 1.571, 0);
+    MovableFrame::Ptr goalFrame = _wc->findFrame<MovableFrame>("25DResult");
+    if (goalFrame.isNull())
+    {
+        RW_THROW("COULD not find movable frame 25DResult ... check model");
+    }
+    // std::ofstream RRTTime("rrt_time.csv");
+    // RRTTime << "iteration, time";
+    // for (int k = 0; k <= 50; k++)
+    // {
+    const clock_t begin_time = clock();
+    _device->setQ(_from, _state);
+    MovableFrame::Ptr bottleFrame = _wc->findFrame<MovableFrame>("Bottle");
+    if (bottleFrame.isNull())
+    {
+        RW_THROW("COULD not find movable frame Bottle ... check model");
+    }
+
+    bottleFrame->attachTo(_wc->findFrame<FixedFrame>("Table"), _state);
+    bottleFrame->moveTo(Transform3D(Vector3D<>(0.000, 0.473, 0.11), RPY<>(0, 0, 1.571)), _state);
+
+    std::vector<Q> collisionFreeSolutions;
     // create Collision Detector
-    rw::proximity::CollisionDetector detector (_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy ());
-    std::vector< Q > solutions = getConfigurations("Bottle", "GraspTCP", _device, _wc, _state);
+    rw::proximity::CollisionDetector detector(_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy());
 
-    for (unsigned int i = 0; i < solutions.size (); i++) 
+    // for (double rollAngle = 0; rollAngle < 360.0; rollAngle += 1.0) {    // for every degree around the roll axis
+
+    goalFrame->moveTo(Transform3D(Vector3D<>(bottleFrame->getTransform(_state).P()[0], bottleFrame->getTransform(_state).P()[1], 0.11), RPY<>(M_PI, 0, 1.571)), _state);
+
+    std::vector<Q> solutions;
+
+    solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
+
+    for (unsigned int i = 0; i < solutions.size(); i++)
     {
         // set the robot in that configuration and check if it is in collision
-        _device->setQ (solutions[i], _state);
-
-        if (!detector.inCollision (_state)) 
+        _device->setQ(solutions[i], _state);
+        if (!detector.inCollision(_state))
         {
-            collisionFreeSolutions.push_back (solutions[i]);    // save it
-            //getRobWorkStudio ()->setState (state);
-            break;                                              // we only need one
+            collisionFreeSolutions.push_back(solutions[i]); // save it
+            break;                                          // we only need one
         }
     }
-    return collisionFreeSolutions.size();
+    //}
+
+    std::cout << "Current position of the robot vs object to be grasped has: "
+              << collisionFreeSolutions.size() << " collision-free inverse kinematics solutions!"
+              << std::endl;
+
+    Q goal = collisionFreeSolutions[0];
+
+    _path.clear();
+
+    createPathRRTConnect(_from, goal, extend, maxTime);
+    cout << "Bottle found, trying goal!\n";
+
+    pathPosAtBott = _path.size();
+    bottleFrame->attachTo(_wc->findFrame<FixedFrame>("GraspTCP"), _state);
+    bottleFrame->moveTo(Transform3D(Vector3D<>(0.000, 0.473, 0.11), RPY<>(0, 0, 1.571)), _state);
+    getRobWorkStudio()->setState(_state);
+    goalFrame->moveTo(Transform3D(Vector3D<>(0.29, -0.5, 0.13), RPY<>(0, 0, 1.571)), _state);
+
+    solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
+
+    for (unsigned int i = 0; i < solutions.size(); i++)
+    {
+        // set the robot in that configuration and check if it is in collision
+        _device->setQ(solutions[i], _state);
+        if (!detector.inCollision(_state))
+        {
+            collisionFreeSolutions.push_back(solutions[i]); // save it
+            break;                                          // we only need one
+        }
+    }
+    Q goal2 = collisionFreeSolutions[1];
+
+    createPathRRTConnect(goal, goal2, extend, maxTime);
+
+    bottleFrame->attachTo(_wc->findFrame<FixedFrame>("Table"), _state);
+    bottleFrame->moveTo(Transform3D(Vector3D<>(0.000, 0.473, 0.11), RPY<>(0, 0, 1.571)), _state);
+
+    _device->setQ(_from, _state);
+    getRobWorkStudio()->setState(_state);
+    float time_spent = float(clock() - begin_time) / CLOCKS_PER_SEC;
+
+    // cout << "RRTConnect number: " << k << " took: " << time_spent << " seconds!\n";
+    //            RRTTime << k << "," << time_spent << "\n";
+    //        }
+    //        RRTTime.close();
 }
 
-void SamplePlugin::heatmap()
-{
-    // Neccersary Mat
-    Mat im_table, im_gray, im_scalar, im_heatmap, im_color_from_heatmap;
+std::vector<Q> SamplePlugin::createPointsList(){
+            MovableFrame::Ptr bottleFrame = _wc->findFrame< MovableFrame > ("Bottle");
+        if (bottleFrame.isNull ()) {
+            RW_THROW ("COULD not find movable frame Bottle ... check model");
+        }
 
-    // Import picture seen form above. 
-    im_table = imread("table.png", IMREAD_COLOR); // Consider IMREAD_COLOR.
-    cvtColor(im_table, im_gray, COLOR_RGB2GRAY);
-    namedWindow("gray");
-    imshow("gray", im_gray);
-    waitKey(0);
+        rw::proximity::CollisionDetector detector (_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy ());
+        
+        MovableFrame::Ptr goalFrame = _wc->findFrame< MovableFrame > ("25DResult");
+        if (goalFrame.isNull ()) {
+            RW_THROW ("COULD not find movable frame 25DResult ... check model");
+        }
+        std::vector<Q> points;
+        Q home (-1.571, -1.572, -1.572, -1.572, 1.571, 0);
+        points.push_back(home);
 
-    // Calculate size coefficient from table to pixel
-    int table_width = 1; // in meters
-    int table_height = 1;
-    int table_pixel_height = im_gray.size().height;
-    int table_pixel_width = im_gray.size().width;
-    int m2p_coefficient = table_pixel_width / table_pixel_width;
-
-    
-    //Define grap area
-    int grap_height = 0.1; //m
-    int grap_width = 0.2; 
-    int drop_height = 0.1;
-    int drop_width = 0.1;
-
-    // Define array with bottle positions 5 is enough.
-    MovableFrame::Ptr bottleFrame = _wc->findFrame< MovableFrame > ("Bottle");
-    if (bottleFrame.isNull ()) {
-        RW_THROW ("COULD not find movable frame Bottle ... check model");
-    }
-    
-    bottleFrame->moveTo (Transform3D(Vector3D<>(0, 0, 0.11), RPY<>(0, 0, 1.571)), _state);
-    //int bottle_position[] = []; 
-
-    // Define a map that is empty, but with the size of the grayscale.
-    im_scalar = im_gray.clone();
-    im_scalar.setTo(Scalar::all(0));
-
-
-    // For loop that runs all the possible configurations. 
-    for (int x = 0; x < table_width; x++)
-    {
-        for(int y = 0; y < table_height; y++)
+        for (int j = 1; j < 5; j++) // create the list of desired points
         {
-            //
-            int sum_reachability = 0;
-            // Define the pick and grap area.
-            if((y > table_height - grap_height) || (y < drop_height && x > table_width - drop_width) )
-            {
-                // Define for loop for bottle positions and side/top = total of 10*8 = 80.
-                for( int pos = 0; pos < 5; pos++) 
-                {
-                     // function or call to move botte. 
-                     if(pos == 0)
-                     {
-                        bottleFrame->moveTo (Transform3D(Vector3D<>(0.5, 0, 0.11), RPY<>(0, 0, 1.571)), _state);
-    
-                     }
-                     else if(pos == 1)
-                     {
-                        bottleFrame->moveTo (Transform3D(Vector3D<>(-0.5, 0, 0.11), RPY<>(0, 0, 1.571)), _state);
-                     }
-                     else if(pos == 2)
-                     {
-                        bottleFrame->moveTo (Transform3D(Vector3D<>(0, 0.5, 0.11), RPY<>(0, 0, 1.571)), _state);
-                     }
-                     else if(pos == 3)
-                     {
-                        bottleFrame->moveTo (Transform3D(Vector3D<>(0, -0.5, 0.11), RPY<>(0, 0, 1.571)), _state);
-                     }
-                     else if(pos == 4)
-                     {
-                        bottleFrame->moveTo (Transform3D(Vector3D<>(0.5, 0.5, 0.11), RPY<>(0, 0, 1.571)), _state);
-                     }
-                     else
-                     {
-                        break;
-                     }                                                               
-                     sum_reachability += reachability();
-                    
-                }
-
-            }
-            // Max number possible for reachability 
-            int max_sum = 40;
-            // at position x,y save a value from reachability as a rectangl with the value from 0-255.
-            int heatmap_255 = 255/max_sum * sum_reachability;
-            rectangle(im_scalar, Point(x-1,y-1),Point(x+1,y+1), heatmap_255, -1);
+            if (j == 1)
+                goalFrame->moveTo(Transform3D(Vector3D<>(bottleFrame->getTransform(_state).P()[0], bottleFrame->getTransform(_state).P()[1], 0.50), RPY<>(0, 0, 3.1)), _state);
+            if (j == 2)
+                goalFrame->moveTo(Transform3D(Vector3D<>(bottleFrame->getTransform(_state).P()[0], bottleFrame->getTransform(_state).P()[1], 0.21), RPY<>(0, 0, 3.1)), _state);
+            if (j == 3)
+                goalFrame->moveTo(Transform3D(Vector3D<>(0.29, -0.5, 0.50), RPY<>(0, 0, 3.1)), _state);
+            if (j == 4)
+                goalFrame->moveTo(Transform3D(Vector3D<>(0.29, -0.5, 0.13), RPY<>(0, 0, 3.1)), _state);
             
+            std::vector<Q> solutions;
+            solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
+            for (unsigned int i = 0; i < solutions.size(); i++)
+            {
+                // set the robot in that configuration and check if it is in collision
+                _device->setQ(solutions[i], _state);
+                if (!detector.inCollision(_state))
+                {
+                    points.push_back(solutions[i]); // save it
+                    break; // we only need one
+                }
+            }
         }
-    }
-    namedWindow("rectangles");
-    imshow("rectangles", im_scalar);
-    waitKey(0);
-    //Makes the heatmap from the information.
-    applyColorMap(im_scalar, im_heatmap, COLORMAP_JET);
-    namedWindow("color");
-    imshow("color", im_heatmap);
-    waitKey(0);
+        points.push_back(home);
+    return points;
 
-    //Convert the heatmap to the picture of the table. 
-
-    for(int color_width = 0; color_width < im_heatmap.size().width; color_width++)
-    {
-        for(int color_height = 0; color_height < im_heatmap.size().height; color_height++)
-        {
-            // Checks if there is saved a value at the heatmap.
-            //if(im_heatmap.at<Vec3b>(color_width,color_height)[0] != 0 && im_heatmap.at<Vec3b>(color_width,color_height)[1] != && im_heatmap.at<Vec3b>(color_width,color_height)[2] != 0)
-            //{
-            //    im_table.at<Vec3b>(color_width,color_height)[0] = im_heatmap.at<Vec3b>(color_width,color_height)[0];
-            //    im_table.at<Vec3b>(color_width,color_height)[1] = im_heatmap.at<Vec3b>(color_width,color_height)[1];
-            //    im_table.at<Vec3b>(color_width,color_height)[2] = im_heatmap.at<Vec3b>(color_width,color_height)[2];
-            //}
-
-        }
-    }
-
-    namedWindow("heatmap");
-    imshow("heatmap", im_table);
-    waitKey(0);
 }
-    
