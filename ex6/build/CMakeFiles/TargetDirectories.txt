@@ -1,0 +1,4 @@
+/home/rovi2022/Workspace/Vision/ex6/build/CMakeFiles/ex1.dir
+/home/rovi2022/Workspace/Vision/ex6/build/CMakeFiles/ex2.dir
+/home/rovi2022/Workspace/Vision/ex6/build/CMakeFiles/edit_cache.dir
+/home/rovi2022/Workspace/Vision/ex6/build/CMakeFiles/rebuild_cache.dir
