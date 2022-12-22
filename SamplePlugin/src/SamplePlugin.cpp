@@ -193,32 +193,71 @@ void SamplePlugin::btnPressed ()
     if (obj == _btn0) {
         _timer->stop ();
         rw::math::Math::seed ();
-
-        // double extend  = 0.15;
-        // double maxTime = 60;
-        
+       
         
         /***************linear interpol****************************/
         std::vector<Q> points = createPointsList();
         std::vector<LinearInterpolator<Q>> interps = linInterpol(points);
         TimedStatePath timePath;
-        TimedState timeState;
 
-        for(size_t j = 0; j < interps.size(); j++){
-            for()
-            timePath.push_back(interps[j]);
+        std::ofstream linfile("linear.csv");
+        linfile << "t; x; dx; ddx\n";
+        for(size_t i = 0; i < interps.size(); i++){
+            for(double k = 0; k < interps.at(i).duration() ; k += 0.05){
+                linfile << k << ";" << interps.at(i).x(k)[0] << " " << interps.at(i).x(k)[1] << " " << interps.at(i).x(k)[2] << " " << interps.at(i).x(k)[3] << " " << interps.at(i).x(k)[4] << " " << interps.at(i).x(k)[5];
+                linfile <<  ";" << interps.at(i).dx(k)[0] << " " << interps.at(i).dx(k)[1] << " " << interps.at(i).dx(k)[2] << " " << interps.at(i).dx(k)[3] << " " << interps.at(i).dx(k)[4] << " " << interps.at(i).dx(k)[5];
+                linfile << ";" << interps.at(i).ddx(k)[0] << " " << interps.at(i).ddx(k)[1] << " " << interps.at(i).ddx(k)[2] << " " << interps.at(i).ddx(k)[3] << " " << interps.at(i).ddx(k)[4] << " " << interps.at(i).ddx(k)[5] << "\n";
+            }
+        }
+        linfile.close();
+        
+        
+
+        // std::ofstream RRTTime("rrt_time.csv");
+        // RRTTime << "iteration, time";
+        // for(size_t j = 0; j < interps.size(); j++){
+        //     for(double k = 0; k <= interps.at(j).duration(); k += 0.05){
+        //         _device->setQ(interps.at(j).x(k), _state);
+        //         timePath.push_back(TimedState (k, _state));
+        //     }
+        // }
+
+        /*******************Parabolic blend********************************/
+
+        std::ofstream parabolfile("parabolic.csv");
+        parabolfile << "x, dx, ddx\n";
+
+        double t_blend = 0.5;
+
+        for(double k = 0; k < interps.at(0).duration() - t_blend; k += 0.05){
+            _device->setQ(interps.at(0).x(k), _state);
+            timePath.push_back(TimedState (k, _state));
+            parabolfile << interps.at(0).x(k) << "," << interps.at(0).dx(k) << "," << interps.at(0).ddx(k) << "\n";
+        }
+        for(size_t i = 1; i < interps.size(); i++){
+            ParabolicBlend<Q> parab(&interps.at(i-1), &interps.at(i), t_blend);
+
+            for(double k = 0; k < 2 * t_blend; k += 0.05){
+                _device->setQ(parab.x(k), _state);
+                timePath.push_back(TimedState (k, _state));
+                parabolfile << parab.x(k) << "," << parab.dx(k) << "," << parab.ddx(k) << "\n";
+            }
+            for(double k = t_blend; k < interps.at(i).duration() - t_blend; k += 0.05){
+                _device->setQ(interps.at(i).x(k), _state);
+                timePath.push_back(TimedState (k, _state));
+                parabolfile << interps.at(i).x(k) << "," << interps.at(i).dx(k) << "," << interps.at(i).ddx(k) << "\n";
+            }
+        }
+        for(double k = interps.at(interps.size()-1).duration() - t_blend; k < interps.at(interps.size()-1).duration(); k += 0.05){
+            _device->setQ(interps.at(interps.size()-1).x(k), _state);
+            parabolfile << interps.at(interps.size()-1).x(k) << "," << interps.at(interps.size()-1).dx(k) << "," << interps.at(interps.size()-1).ddx(k) << "\n";
+            timePath.push_back(TimedState (k, _state));
         }
 
-        // for (double t = 0; t < duration; t += 0.05) //duration ligger i linInterpol timestatepath til pathloader smides i for loopet i lininterpol
-        // {
-        //     _device->setQ(interp.x(t), _state);
-        //     timePath.push_back(TimedState(t, _state));
-        // }
-        // durationsum += duration;
-
+        parabolfile.close();
         PathLoader::storeTimedStatePath(*_wc, timePath, "./linearvis.rwplay");
 
-        SamplePlugin::createPathP2PPoly(points);
+        
         /********************************************/
         /**************************************************RRT connect testing*****************************************************************/
         //runRRT();
@@ -442,16 +481,24 @@ void SamplePlugin::printProjectionMatrix (std::string frameName)
     }
 }
 
-void SamplePlugin::createPathP2PPoly(std::vector<Q> points)     //ændre til at spise vec af interps. find collisions
+TimedStatePath SamplePlugin::createPathP2PParabol(std::vector<LinearInterpolator<Q>> interpols)     //ændre til at spise vec af interps. find collisions
 {
-
+    TimedStatePath timeStatePath;
+    for(size_t i = 0; i < interpols.size()-1; i++){
+        ParabolicBlend<Q> parabol(interpols.at(i), interpols.at(i+1), 0.5);
+        for(double k = 0; k < parabol.duration(); k += 0.05){
+            _device->setQ(parabol.x(k), _state);
+            timeStatePath.push_back(TimedState (k, _state));
+        }
+    }
+    return timeStatePath;
 
 }
 
 std::vector<LinearInterpolator<Q>> SamplePlugin::linInterpol(std::vector<Q> points){
     std::vector<LinearInterpolator<Q>> interps;
     
-    for (int i = 0; i < points.size() - 1; i++)
+    for (size_t i = 0; i < points.size() - 1; i++)
     {
         double minDur = 0.0001;
         double maxDur = 10;
@@ -474,7 +521,7 @@ std::vector<LinearInterpolator<Q>> SamplePlugin::linInterpol(std::vector<Q> poin
             }
             duration = (maxDur + minDur) / 2;
         }
-        LinearInterpolator<Q> interp(points[i], points[i + 1], duration);
+        LinearInterpolator<Q> interp(points[i], points[i + 1], maxDur);
         interps.push_back(interp);
     }
     return interps;
@@ -512,7 +559,7 @@ void SamplePlugin::runRRT(){
     // RRTTime << "iteration, time";
     // for (int k = 0; k <= 50; k++)
     // {
-    const clock_t begin_time = clock();
+    //const clock_t begin_time = clock();
     _device->setQ(_from, _state);
     MovableFrame::Ptr bottleFrame = _wc->findFrame<MovableFrame>("Bottle");
     if (bottleFrame.isNull())
@@ -585,7 +632,7 @@ void SamplePlugin::runRRT(){
 
     _device->setQ(_from, _state);
     getRobWorkStudio()->setState(_state);
-    float time_spent = float(clock() - begin_time) / CLOCKS_PER_SEC;
+    //float time_spent = float(clock() - begin_time) / CLOCKS_PER_SEC;
 
     // cout << "RRTConnect number: " << k << " took: " << time_spent << " seconds!\n";
     //            RRTTime << k << "," << time_spent << "\n";
@@ -593,47 +640,91 @@ void SamplePlugin::runRRT(){
     //        RRTTime.close();
 }
 
-std::vector<Q> SamplePlugin::createPointsList(){
-            MovableFrame::Ptr bottleFrame = _wc->findFrame< MovableFrame > ("Bottle");
-        if (bottleFrame.isNull ()) {
-            RW_THROW ("COULD not find movable frame Bottle ... check model");
-        }
+std::vector<Q> SamplePlugin::createPointsList()
+{
+    MovableFrame::Ptr bottleFrame = _wc->findFrame<MovableFrame>("Bottle");
+    if (bottleFrame.isNull())
+    {
+        RW_THROW("COULD not find movable frame Bottle ... check model");
+    }
 
-        rw::proximity::CollisionDetector detector (_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy ());
-        
-        MovableFrame::Ptr goalFrame = _wc->findFrame< MovableFrame > ("25DResult");
-        if (goalFrame.isNull ()) {
-            RW_THROW ("COULD not find movable frame 25DResult ... check model");
-        }
-        std::vector<Q> points;
-        Q home (-1.571, -1.572, -1.572, -1.572, 1.571, 0);
-        points.push_back(home);
+    rw::proximity::CollisionDetector detector(_wc, rwlibs::proximitystrategies::ProximityStrategyFactory::makeDefaultCollisionStrategy());
 
-        for (int j = 1; j < 5; j++) // create the list of desired points
+    MovableFrame::Ptr goalFrame = _wc->findFrame<MovableFrame>("25DResult");
+    if (goalFrame.isNull())
+    {
+        RW_THROW("COULD not find movable frame 25DResult ... check model");
+    }
+    std::vector<Q> points;
+    std::vector<Q> solutions;
+    Q home(-1.571, -1.572, -1.572, -1.572, 1.571, 0);
+    points.push_back(home);
+
+    goalFrame->moveTo(Transform3D(Vector3D<>(0.0, 0.473, 0.30), RPY<>(0, 0, 3.1)), _state);
+    solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
+    for (unsigned int i = 0; i < solutions.size(); i++)
+    {
+        // set the robot in that configuration and check if it is in collision
+        _device->setQ(solutions[i], _state);
+        if (!detector.inCollision(_state))
         {
-            if (j == 1)
-                goalFrame->moveTo(Transform3D(Vector3D<>(bottleFrame->getTransform(_state).P()[0], bottleFrame->getTransform(_state).P()[1], 0.50), RPY<>(0, 0, 3.1)), _state);
-            if (j == 2)
-                goalFrame->moveTo(Transform3D(Vector3D<>(bottleFrame->getTransform(_state).P()[0], bottleFrame->getTransform(_state).P()[1], 0.21), RPY<>(0, 0, 3.1)), _state);
-            if (j == 3)
-                goalFrame->moveTo(Transform3D(Vector3D<>(0.29, -0.5, 0.50), RPY<>(0, 0, 3.1)), _state);
-            if (j == 4)
-                goalFrame->moveTo(Transform3D(Vector3D<>(0.29, -0.5, 0.13), RPY<>(0, 0, 3.1)), _state);
-            
-            std::vector<Q> solutions;
-            solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
-            for (unsigned int i = 0; i < solutions.size(); i++)
-            {
-                // set the robot in that configuration and check if it is in collision
-                _device->setQ(solutions[i], _state);
-                if (!detector.inCollision(_state))
-                {
-                    points.push_back(solutions[i]); // save it
-                    break; // we only need one
-                }
-            }
+            points.push_back(solutions[i]); // save it
+            break;                          // we only need one
         }
-        points.push_back(home);
-    return points;
+    }
 
+    goalFrame->moveTo(Transform3D(Vector3D<>(0.0, 0.473, 0.21), RPY<>(0, 0, 3.1)), _state);
+    solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
+    for (unsigned int i = 0; i < solutions.size(); i++)
+    {
+        // set the robot in that configuration and check if it is in collision
+        _device->setQ(solutions[i], _state);
+        if (!detector.inCollision(_state))
+        {
+            points.push_back(solutions[i]); // save it
+            break;                          // we only need one
+        }
+    }
+    
+    goalFrame->moveTo(Transform3D(Vector3D<>(0.0, 0.473, 0.30), RPY<>(0, 0, 3.1)), _state);
+    solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
+    for (unsigned int i = 0; i < solutions.size(); i++)
+    {
+        // set the robot in that configuration and check if it is in collision
+        _device->setQ(solutions[i], _state);
+        if (!detector.inCollision(_state))
+        {
+            points.push_back(solutions[i]); // save it
+            break;                          // we only need one
+        }
+    }
+
+    goalFrame->moveTo(Transform3D(Vector3D<>(0.29, -0.5, 0.30), RPY<>(0, 0, 3.1)), _state);
+    solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
+    for (unsigned int i = 0; i < solutions.size(); i++)
+    {
+        // set the robot in that configuration and check if it is in collision
+        _device->setQ(solutions[i], _state);
+        if (!detector.inCollision(_state))
+        {
+            points.push_back(solutions[i]); // save it
+            break;                          // we only need one
+        }
+    }
+
+    goalFrame->moveTo(Transform3D(Vector3D<>(0.29, -0.5, 0.21), RPY<>(0, 0, 3.1)), _state);
+    solutions = getConfigurations("25DResult", "GraspTCP", _device, _wc, _state);
+    for (unsigned int i = 0; i < solutions.size(); i++)
+    {
+        // set the robot in that configuration and check if it is in collision
+        _device->setQ(solutions[i], _state);
+        if (!detector.inCollision(_state))
+        {
+            points.push_back(solutions[i]); // save it
+            break;                          // we only need one
+        }
+    }
+
+    points.push_back(home);
+    return points;
 }

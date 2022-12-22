@@ -109,7 +109,7 @@ private slots:
 
 private:
     static cv::Mat toOpenCVImage(const rw::sensor::Image& img);
-    void createPathP2PPoly(std::vector<Q> points);
+    TimedStatePath createPathP2PParabol(std::vector<LinearInterpolator<Q>> interpols);
     int pathPosAtBott = 50000;
     void runRRT();
     std::vector<Q> createPointsList();
